@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-zqfjwu51fkgj%ssu)^yczkl##^a#6n8m@iwy9#y#*u3v+2sdtx'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -147,3 +147,10 @@ INTERNAL_IPS = [
 ]
 
 CSRF_FAILURE_VIEW = 'blog.views.csrf_failure'
+
+LOGIN_REDIRECT_URL = 'blog:index'
+LOGIN_URL = 'login'
+
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
+
