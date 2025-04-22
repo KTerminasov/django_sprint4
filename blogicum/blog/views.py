@@ -2,8 +2,12 @@ from django.shortcuts import render, get_object_or_404
 from .models import Post, Category
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 
 def index(request):
+    """View-функция главной страницы."""
     template = 'blog/index.html'
     post_list = Post.objects.all().filter(
         pub_date__lte=datetime.now(),
@@ -45,6 +49,22 @@ def category_posts(request, category_slug):
 
     return render(request, template, context)
 
+
+def user_detail(request, username):
+    """View-функция страницы пользователя."""
+    template = 'blog/profile.html'
+    profile = get_object_or_404(
+        User,
+        username=username
+    )
+    context = {
+        'profile': profile
+    }
+
+    return render(request, template, context)
+
+def user_edit(context):
+    return context
 
 def page_not_found(request, exception):
     """Обработка ошибки 404."""
