@@ -1,9 +1,11 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, get_list_or_404
 from .models import Post, Category
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+from django.core.paginator import Paginator
 
 
 def index(request):
@@ -13,8 +15,13 @@ def index(request):
         pub_date__lte=datetime.now(),
         is_published=True,
         category__is_published=True
-    )[:5]
-    context = {'post_list': post_list}
+    )
+
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {'page_obj': page_obj}
     return render(request, template, context)
 
 
@@ -42,9 +49,14 @@ def category_posts(request, category_slug):
         is_published=True,
         pub_date__lte=datetime.now()
     )
+
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page_number')
+    page_obj = paginator.get_page(page_number)
+
     context = {
         'category': category,
-        'post_list': post_list
+        'page_obj': page_obj
     }
 
     return render(request, template, context)
@@ -57,8 +69,20 @@ def user_detail(request, username):
         User,
         username=username
     )
+    post_list = Post.objects.all().filter(
+        pub_date__lte=datetime.now(),
+        is_published=True,
+        category__is_published=True,
+        author = profile
+    )
+
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'profile': profile
+        'profile': profile,
+        'page_obj':page_obj
     }
 
     return render(request, template, context)
