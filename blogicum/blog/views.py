@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404, get_list_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Category
 from datetime import datetime
 
@@ -7,6 +7,9 @@ User = get_user_model()
 
 from django.core.paginator import Paginator
 
+from .forms import PostForm
+
+from django.contrib.auth.decorators import login_required
 
 def index(request):
     """View-функция главной страницы."""
@@ -70,9 +73,6 @@ def user_detail(request, username):
         username=username
     )
     post_list = Post.objects.all().filter(
-        pub_date__lte=datetime.now(),
-        is_published=True,
-        category__is_published=True,
         author = profile
     )
 
@@ -89,6 +89,20 @@ def user_detail(request, username):
 
 def user_edit(context):
     return context
+
+@login_required
+def create_post(request):
+    """Создание поста."""
+    template = 'blog/create.html'
+    
+    form = PostForm(request.POST or None)
+    context = {'form': form }
+    
+    if form.is_valid():
+        form.save()       
+        return redirect('blog:profile', username=request.user.username)
+    
+    return render(request, template, context)
 
 def page_not_found(request, exception):
     """Обработка ошибки 404."""
