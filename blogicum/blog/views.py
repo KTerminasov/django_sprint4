@@ -91,16 +91,26 @@ def user_edit(context):
     return context
 
 @login_required
-def create_post(request):
-    """Создание поста."""
+def act_with_post(request, post_id=None):
+    """Создание, редактирование или удаление поста."""
     template = 'blog/create.html'
     
-    form = PostForm(request.POST or None)
+    if post_id is None:
+        instance = None
+    else:
+        instance = get_object_or_404(Post, pk=post_id)
+        if request.user != instance.author:
+            return redirect('blog:post_detail', post_id=post_id)
+
+    form = PostForm(request.POST or None, instance=instance)
     context = {'form': form }
     
     if form.is_valid():
-        form.save()       
-        return redirect('blog:profile', username=request.user.username)
+        form.save() 
+        if post_id == None:      
+            return redirect('blog:detail', username=request.user.username)
+        else:
+            return redirect('blog:post_detail', post_id=post_id)
     
     return render(request, template, context)
 
