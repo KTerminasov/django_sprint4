@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Post, Category
+from .models import Post, Category, Comment
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
@@ -7,9 +7,11 @@ User = get_user_model()
 
 from django.core.paginator import Paginator
 
-from .forms import PostForm
+from .forms import PostForm, CommentForm
 
 from django.contrib.auth.decorators import login_required
+
+from .utils import get_post
 
 def index(request):
     """View-функция главной страницы."""
@@ -29,14 +31,15 @@ def index(request):
 
 
 def post_detail(request, post_id):
-    post = get_object_or_404(
-        Post,
-        pk=post_id,
-        pub_date__lte=datetime.now(),
-        is_published=True,
-        category__is_published=True
-    )
-    context = {'post': post}
+    post = get_post(post_id)
+    comments = post.comments.select_related('author')
+    form = CommentForm()
+
+    context = {
+        'post': post,
+        'comments': comments,
+        'form': form
+    }
     template = 'blog/detail.html'
     return render(request, template, context)
 
@@ -73,7 +76,7 @@ def user_detail(request, username):
         username=username
     )
     post_list = Post.objects.all().filter(
-        author = profile
+        author=profile
     )
 
     paginator = Paginator(post_list, 10)
@@ -87,14 +90,16 @@ def user_detail(request, username):
 
     return render(request, template, context)
 
+
 def user_edit(context):
     return context
+
 
 @login_required
 def act_with_post(request, post_id=None):
     """Создание, редактирование или удаление поста."""
     template = 'blog/create.html'
-    
+
     if post_id is None:
         instance = None
     else:
@@ -103,16 +108,53 @@ def act_with_post(request, post_id=None):
             return redirect('blog:post_detail', post_id=post_id)
 
     form = PostForm(request.POST or None, instance=instance)
-    context = {'form': form }
-    
+    context = {'form': form}
+
     if form.is_valid():
-        form.save() 
-        if post_id == None:      
-            return redirect('blog:detail', username=request.user.username)
+        form.save()
+        if post_id is None:
+            return redirect('blog:profile', username=request.user.username)
         else:
             return redirect('blog:post_detail', post_id=post_id)
-    
+
     return render(request, template, context)
+
+
+@login_required
+def add_comment(request, post_id):
+    """Создание комментария."""
+    post = get_post(post_id)
+    form = CommentForm(request.POST)
+
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+
+    return redirect('blog:post_detail', post_id=post_id)
+
+
+@login_required
+def edit_comment(request, post_id, comment_id):
+    """Редактирование комментария."""
+    template = 'blog/comment.html'
+
+    comment = get_object_or_404(Comment, pk=comment_id)
+    if request.user != comment.author:
+        return redirect('blog:post_detail', post_id)
+    form = CommentForm(request.POST or None, instance=comment)
+    context = {
+        'comment': comment,
+        'form': form
+    }
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:post_detail', post_id)
+
+    return render(request, template, context)
+
 
 def page_not_found(request, exception):
     """Обработка ошибки 404."""
