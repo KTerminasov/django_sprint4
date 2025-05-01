@@ -2,16 +2,16 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Category, Comment
 from datetime import datetime
 
-from django.contrib.auth import get_user_model
-User = get_user_model()
-
 from django.core.paginator import Paginator
 
 from .forms import PostForm, CommentForm
 
 from django.contrib.auth.decorators import login_required
 
-from .utils import get_post
+from .utils import get_post, get_comment
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 def index(request):
     """View-функция главной страницы."""
@@ -31,7 +31,7 @@ def index(request):
 
 
 def post_detail(request, post_id):
-    post = get_post(post_id)
+    post = get_post(post_id, request.user)
     comments = post.comments.select_related('author')
     form = CommentForm()
 
@@ -121,9 +121,25 @@ def act_with_post(request, post_id=None):
 
 
 @login_required
+def delete_post(request, post_id):
+    """Удаление поста."""
+    template = 'blog/create.html'
+
+    post = get_post(post_id, request.user)
+    form = PostForm(instance=post)
+    context = {'form': form}
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blog:profile', username=request.user.username)
+
+    return render(request, template, context)
+
+
+@login_required
 def add_comment(request, post_id):
     """Создание комментария."""
-    post = get_post(post_id)
+    post = get_post(post_id, request.user)
     form = CommentForm(request.POST)
 
     if form.is_valid():
@@ -140,9 +156,7 @@ def edit_comment(request, post_id, comment_id):
     """Редактирование комментария."""
     template = 'blog/comment.html'
 
-    comment = get_object_or_404(Comment, pk=comment_id)
-    if request.user != comment.author:
-        return redirect('blog:post_detail', post_id)
+    comment = get_comment(comment_id, request.user)
     form = CommentForm(request.POST or None, instance=comment)
     context = {
         'comment': comment,
@@ -152,6 +166,25 @@ def edit_comment(request, post_id, comment_id):
     if form.is_valid():
         form.save()
         return redirect('blog:post_detail', post_id)
+
+    return render(request, template, context)
+
+
+@login_required
+def delete_comment(request, post_id, comment_id):
+    """Удаление комментария."""
+    template = 'blog/comment.html'
+
+    comment = get_comment(comment_id, request.user)
+    form = CommentForm(instance=comment)
+    context = {
+        'comment': comment,
+        'form': form
+    }
+
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', post_id=post_id)
 
     return render(request, template, context)
 
