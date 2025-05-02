@@ -4,11 +4,13 @@ from datetime import datetime
 
 from django.core.paginator import Paginator
 
-from .forms import PostForm, CommentForm
+from .forms import PostForm, CommentForm, ProfileChangeForm
 
 from django.contrib.auth.decorators import login_required
 
 from .utils import get_post, get_comment
+
+from django.http import Http404
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -68,15 +70,15 @@ def category_posts(request, category_slug):
     return render(request, template, context)
 
 
-def user_detail(request, username):
-    """View-функция страницы пользователя."""
+def view_profile(request, username):
+    """Просмотр профиля пользователя."""
     template = 'blog/profile.html'
-    profile = get_object_or_404(
+    user_profile = get_object_or_404(
         User,
         username=username
     )
     post_list = Post.objects.all().filter(
-        author=profile
+        author=user_profile
     )
 
     paginator = Paginator(post_list, 10)
@@ -84,15 +86,29 @@ def user_detail(request, username):
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'profile': profile,
-        'page_obj':page_obj
+        'profile': user_profile,
+        'page_obj': page_obj
     }
 
     return render(request, template, context)
 
 
-def user_edit(context):
-    return context
+@login_required
+def edit_profile(request):
+    """Редактирование профиля пользователя."""
+    template = 'blog/user.html'
+
+    user_profile = request.user
+    form = ProfileChangeForm(request.POST or None, instance=user_profile)
+    context = {
+        'form': form
+    }
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:profile', username=user_profile.username)
+
+    return render(request, template, context)
 
 
 @login_required
