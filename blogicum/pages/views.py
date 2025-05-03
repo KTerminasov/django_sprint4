@@ -1,12 +1,29 @@
 from django.shortcuts import render
+from django.views.generic import TemplateView
 
 
-# Create your views here.
-def about(request):
-    template = 'pages/about.html'
-    return render(request, template)
+class AboutPage(TemplateView):
+    """Просмотр страницы с информацией о проекте."""
+
+    template_name = 'pages/about.html'
 
 
-def rules(request):
-    template = 'pages/rules.html'
-    return render(request, template)
+class RulesPage(TemplateView):
+    """Просмотр страницы с правилами сайта."""
+
+    template_name = 'pages/rules.html'
+
+
+def page_not_found(request, exception):
+    """Обработка ошибки 404."""
+    return render(request, 'pages/404.html', status=404)
+
+
+def csrf_failure(request, reason=''):
+    """Обработка ошибки 403."""
+    return render(request, 'pages/403csrf.html', status=403)
+
+
+def internal_server_error(request):
+    """Обработка ошибки 500."""
+    return render(request, 'pages/500.html', status=500)

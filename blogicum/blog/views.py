@@ -1,8 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Post, Category, Comment
+from .models import Post, Category
 from datetime import datetime
 
 from django.core.paginator import Paginator
+from django.utils import timezone
 
 from .forms import PostForm, CommentForm, ProfileChangeForm
 
@@ -10,10 +11,9 @@ from django.contrib.auth.decorators import login_required
 
 from .utils import get_post, get_comment
 
-from django.http import Http404
-
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
 
 def index(request):
     """View-функция главной страницы."""
@@ -77,9 +77,17 @@ def view_profile(request, username):
         User,
         username=username
     )
-    post_list = Post.objects.all().filter(
-        author=user_profile
-    )
+    if request.user == user_profile:
+        post_list = Post.objects.all().filter(
+            author=user_profile
+        )
+    else:
+        post_list = Post.objects.all().filter(
+            pub_date__lte=datetime.now(),
+            is_published=True,
+            category__is_published=True,
+            author=user_profile
+        )
 
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
@@ -117,13 +125,18 @@ def act_with_post(request, post_id=None):
     template = 'blog/create.html'
 
     if post_id is None:
-        instance = None
+        instance = Post()
+        instance.pub_date = timezone.now()
+        instance.author = request.user
     else:
         instance = get_object_or_404(Post, pk=post_id)
         if request.user != instance.author:
             return redirect('blog:post_detail', post_id=post_id)
 
-    form = PostForm(request.POST or None, instance=instance)
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+        instance=instance)
     context = {'form': form}
 
     if form.is_valid():
@@ -203,18 +216,3 @@ def delete_comment(request, post_id, comment_id):
         return redirect('blog:post_detail', post_id=post_id)
 
     return render(request, template, context)
-
-
-def page_not_found(request, exception):
-    """Обработка ошибки 404."""
-    return render(request, 'pages/404.html', status=404)
-
-
-def csrf_failure(request, reason=''):
-    """Обработка ошибки 403."""
-    return render(request, 'pages/403csrf.html', status=403)
-
-
-def internal_server_error(request):
-    """Обработка ошибки 500."""
-    return render(request, 'pages/500.html', status=500)
