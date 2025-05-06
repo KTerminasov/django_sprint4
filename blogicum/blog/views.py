@@ -1,28 +1,22 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import Post, Category
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import PostForm, CommentForm, ProfileChangeForm
+from .forms import CommentForm, PostForm, ProfileChangeForm
+from .models import Category, Post
+from .utils import get_item, get_post_list
 
-from django.contrib.auth.decorators import login_required
-
-from .utils import get_post, get_comment
-
-from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-def index(request):
-    """View-функция главной страницы."""
+def get_index(request):
+    """Просмотр главной страницы."""
     template = 'blog/index.html'
-    post_list = Post.objects.all().filter(
-        pub_date__lte=datetime.now(),
-        is_published=True,
-        category__is_published=True
-    )
+    post_list = get_post_list(filtrate=True)
 
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
@@ -32,8 +26,9 @@ def index(request):
     return render(request, template, context)
 
 
-def post_detail(request, post_id):
-    post = get_post(post_id, request.user)
+def get_post_detail(request, post_id):
+    """Просмотр детальной информации о посте."""
+    post = get_item(Post, post_id, request.user)
     comments = post.comments.select_related('author')
     form = CommentForm()
 
@@ -46,17 +41,19 @@ def post_detail(request, post_id):
     return render(request, template, context)
 
 
-def category_posts(request, category_slug):
+def get_category_posts(request, category_slug):
+    """Просмотр постов, привязанных к категории."""
     template = 'blog/category.html'
     category = get_object_or_404(
         Category,
         slug=category_slug,
         is_published=True
     )
-    post_list = category.posts.all().filter(
-        is_published=True,
-        pub_date__lte=datetime.now()
-    )
+    # post_list = category.posts.all().filter(
+    #     is_published=True,
+    #     pub_date__lte=datetime.now()
+    # )
+    post_list = get_post_list(filtrate=True).filter(category=category_slug)
 
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page_number')
@@ -77,17 +74,9 @@ def view_profile(request, username):
         User,
         username=username
     )
-    if request.user == user_profile:
-        post_list = Post.objects.all().filter(
-            author=user_profile
-        )
-    else:
-        post_list = Post.objects.all().filter(
-            pub_date__lte=datetime.now(),
-            is_published=True,
-            category__is_published=True,
-            author=user_profile
-        )
+    post_list = get_post_list(
+        filtrate=(request.user == user_profile)
+    ).filter(author=user_profile)
 
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
@@ -106,15 +95,49 @@ def edit_profile(request):
     """Редактирование профиля пользователя."""
     template = 'blog/user.html'
 
-    user_profile = request.user
-    form = ProfileChangeForm(request.POST or None, instance=user_profile)
+    form = ProfileChangeForm(request.POST or None, instance=request.user)
     context = {
         'form': form
     }
 
     if form.is_valid():
         form.save()
-        return redirect('blog:profile', username=user_profile.username)
+        return redirect('blog:profile', username=request.user.username)
+
+    return render(request, template, context)
+
+
+@login_required
+def create_post(request):
+    """Создание поста."""
+    template = 'blog/create.html'
+
+    form = PostForm(request.POST or None)
+    context = {'form': form}
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:profile', username=request.user.username)
+
+    return render(request, template, context)
+
+
+@login_required
+def edit_post(request, post_id):
+    template = 'blog/create.html'
+    post = get_item(Post, post_id)
+    if request.user != post.author:
+        return redirect('blog:post_detail', post_id=post_id)
+
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+        instance=post)
+    context = {'form': form}
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:post_detail', post_id=post_id)
 
     return render(request, template, context)
 
@@ -125,9 +148,7 @@ def act_with_post(request, post_id=None):
     template = 'blog/create.html'
 
     if post_id is None:
-        instance = Post()
-        instance.pub_date = timezone.now()
-        instance.author = request.user
+        instance = None
     else:
         instance = get_object_or_404(Post, pk=post_id)
         if request.user != instance.author:
@@ -140,7 +161,12 @@ def act_with_post(request, post_id=None):
     context = {'form': form}
 
     if form.is_valid():
+        post = form.save(commit=False)
+        if post_id is None:
+            post.author = request.user
+            post.pub_date = timezone.now()
         form.save()
+
         if post_id is None:
             return redirect('blog:profile', username=request.user.username)
         else:

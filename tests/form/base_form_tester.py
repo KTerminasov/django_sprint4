@@ -33,6 +33,7 @@ from conftest import (
 from fixtures.types import ModelAdapterT
 from form.base_tester import BaseTester
 
+import pdb
 
 class FormValidationException(Exception):
     pass
@@ -246,6 +247,7 @@ class BaseFormTester(BaseTester):
     def test_unlogged_cannot_create(
         self, form: BaseForm, qs: QuerySet
     ) -> None:
+        # pdb.set_trace()
         self.test_create_item(
             form,
             qs,
