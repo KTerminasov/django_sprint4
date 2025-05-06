@@ -113,10 +113,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
-# Меняем локализацию на русскую.
-LANGUAGE_CODE = 'ru-RU'
-
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'  #'UTC'
 
 USE_I18N = True
 
@@ -156,3 +153,6 @@ EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 USE_L10N = False
+
+# Меняем локализацию на русскую.
+LANGUAGE_CODE = 'ru-RU'
