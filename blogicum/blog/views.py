@@ -165,11 +165,18 @@ def delete_post(request, post_id):
 def add_comment(request, post_id):
     """Создание комментария."""
     post = get_item(Post, post_id, request.user)
+    # post = get_object_or_404(
+    #     Post,
+    #     pk=post_id,
+    #     pub_date__lte=timezone.now(),
+    #     is_published=True,
+    #     category__is_published=True
+    # )
     form = CommentForm(request.POST)
 
     if form.is_valid():
-        if post.pub_date > timezone.now():
-            raise Http404
+        # if post.pub_date > timezone.now():
+        #       raise Http404
         comment = form.save(commit=False)
         comment.author = request.user
         comment.post = post

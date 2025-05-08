@@ -22,6 +22,7 @@ from django.views.generic.edit import CreateView
 
 
 urlpatterns = [
+    path('', include('blog.urls', namespace='blog')),
     path(
         'auth/registration/',
         CreateView.as_view(
@@ -31,8 +32,7 @@ urlpatterns = [
         ),
         name='registration',
     ),
-    path('auth/', include('django.contrib.auth.urls')),
-    path('posts/', include('blog.urls', namespace='blog')),
+    path('auth/', include('django.contrib.auth.urls')),    
     path('category/', include('blog.urls', namespace='blog')),
     path('pages/', include('pages.urls', namespace='pages')),
     path('admin/', admin.site.urls),
