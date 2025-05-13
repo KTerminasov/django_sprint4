@@ -31,6 +31,7 @@ def _test_edit(
     ItemModel = type(item)
 
     def create_updated_form(**updated_props):
+        print(f'url:{edit_url}')
         response = user_client.get(edit_url)
         _, form = _testget_context_item_by_class(
             response.context, BaseForm, ""

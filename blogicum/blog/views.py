@@ -41,27 +41,112 @@ def get_post_detail(request, post_id):
     return render(request, template, context)
 
 
-def get_category_posts(request, category_slug):
-    """Просмотр постов, привязанных к категории."""
-    template = 'blog/category.html'
-    category = get_object_or_404(
-        Category,
-        slug=category_slug,
-        is_published=True
-    )
-    post_list = category.posts.all().filter(
-        is_published=True,
-        pub_date__lte=datetime.now()
-    )
+@login_required
+def create_post(request):
+    """Создание поста."""
+    template = 'blog/create.html'
 
-    paginator = Paginator(post_list, 10)
-    page_number = request.GET.get('page_number')
-    page_obj = paginator.get_page(page_number)
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None
+    )
+    context = {'form': form}
 
+    if form.is_valid():
+        post = form.save(commit=False)
+        post.author = request.user
+        post.save()
+        return redirect('blog:profile', username=request.user.username)
+
+    return render(request, template, context)
+
+
+@login_required
+def edit_post(request, post_id):
+    """Редактирование поста."""
+    template = 'blog/create.html'
+    post = get_object_or_404(Post, pk=post_id)
+    if request.user != post.author:
+        return redirect('blog:post_detail', post_id=post_id)
+
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+        instance=post)
+    context = {'form': form}
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:post_detail', post_id=post_id)
+
+    return render(request, template, context)
+
+
+@login_required
+def delete_post(request, post_id):
+    """Удаление поста."""
+    template = 'blog/create.html'
+
+    post = get_object_or_404(Post, pk=post_id)
+    if post.author != request.user:
+        raise Http404
+    form = PostForm(instance=post)
+    context = {'form': form}
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blog:profile', username=request.user.username)
+
+    return render(request, template, context)
+
+
+@login_required
+def add_comment(request, post_id):
+    """Создание комментария."""
+    post = get_item(Post, post_id, request.user)
+    form = CommentForm(request.POST)
+
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+
+    return redirect('blog:post_detail', post_id=post_id)
+
+
+@login_required
+def edit_comment(request, post_id, comment_id):
+    """Редактирование комментария."""
+    template = 'blog/comment.html'
+
+    comment = get_item(Comment, comment_id, request.user)
+    form = CommentForm(request.POST or None, instance=comment)
     context = {
-        'category': category,
-        'page_obj': page_obj
+        'comment': comment,
+        'form': form
     }
+
+    if form.is_valid():
+        form.save()
+        return redirect('blog:post_detail', post_id)
+
+    return render(request, template, context)
+
+
+@login_required
+def delete_comment(request, post_id, comment_id):
+    """Удаление комментария."""
+    template = 'blog/comment.html'
+
+    comment = get_item(Comment, comment_id, request.user)
+    context = {
+        'comment': comment,
+    }
+
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', post_id=post_id)
 
     return render(request, template, context)
 
@@ -106,120 +191,26 @@ def edit_profile(request):
     return render(request, template, context)
 
 
-@login_required
-def create_post(request):
-    """Создание поста."""
-    template = 'blog/create.html'
-
-    form = PostForm(
-        request.POST or None,
-        files=request.FILES or None
+def get_category_posts(request, category_slug):
+    """Просмотр постов, привязанных к категории."""
+    template = 'blog/category.html'
+    category = get_object_or_404(
+        Category,
+        slug=category_slug,
+        is_published=True
     )
-    context = {'form': form}
+    post_list = category.posts.all().filter(
+        is_published=True,
+        pub_date__lte=datetime.now()
+    )
 
-    if form.is_valid():
-        post = form.save(commit=False)
-        post.author = request.user
-        post.save()
-        return redirect('blog:profile', username=request.user.username)
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page_number')
+    page_obj = paginator.get_page(page_number)
 
-    return render(request, template, context)
-
-
-@login_required
-def edit_post(request, post_id):
-    """Редактирование поста."""
-    template = 'blog/create.html'
-    post = get_object_or_404(Post, post_id)
-    if request.user != post.author:
-        return redirect('blog:post_detail', post_id=post_id)
-
-    form = PostForm(
-        request.POST or None,
-        files=request.FILES or None,
-        instance=post)
-    context = {'form': form}
-
-    if form.is_valid():
-        form.save()
-        return redirect('blog:post_detail', post_id=post_id)
-
-    return render(request, template, context)
-
-
-@login_required
-def delete_post(request, post_id):
-    """Удаление поста."""
-    template = 'blog/create.html'
-
-    post = get_object_or_404(Post, post_id)
-    if post.author != request.user:
-        raise Http404
-    form = PostForm(instance=post)
-    context = {'form': form}
-
-    if request.method == 'POST':
-        post.delete()
-        return redirect('blog:profile', username=request.user.username)
-
-    return render(request, template, context)
-
-
-@login_required
-def add_comment(request, post_id):
-    """Создание комментария."""
-    post = get_item(Post, post_id, request.user)
-    # post = get_object_or_404(
-    #     Post,
-    #     pk=post_id,
-    #     pub_date__lte=timezone.now(),
-    #     is_published=True,
-    #     category__is_published=True
-    # )
-    form = CommentForm(request.POST)
-
-    if form.is_valid():
-        # if post.pub_date > timezone.now():
-        #       raise Http404
-        comment = form.save(commit=False)
-        comment.author = request.user
-        comment.post = post
-        comment.save()
-
-    return redirect('blog:post_detail', post_id=post_id)
-
-
-@login_required
-def edit_comment(request, post_id, comment_id):
-    """Редактирование комментария."""
-    template = 'blog/comment.html'
-
-    comment = get_item(Comment, comment_id, request.user)
-    form = CommentForm(request.POST or None, instance=comment)
     context = {
-        'comment': comment,
-        'form': form
+        'category': category,
+        'page_obj': page_obj
     }
-
-    if form.is_valid():
-        form.save()
-        return redirect('blog:post_detail', post_id)
-
-    return render(request, template, context)
-
-
-@login_required
-def delete_comment(request, post_id, comment_id):
-    """Удаление комментария."""
-    template = 'blog/comment.html'
-
-    comment = get_item(Comment, comment_id, request.user)
-    context = {
-        'comment': comment,
-    }
-
-    if request.method == 'POST':
-        comment.delete()
-        return redirect('blog:post_detail', post_id=post_id)
 
     return render(request, template, context)
