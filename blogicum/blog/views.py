@@ -152,7 +152,7 @@ def delete_post(request, post_id):
     """Удаление поста."""
     template = 'blog/create.html'
 
-    post = get_item(Post, post_id, request.user)
+    post = get_object_or_404(Post, post_id)
     if post.author != request.user:
         raise Http404
     form = PostForm(instance=post)

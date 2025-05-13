@@ -31,7 +31,6 @@ from form.post.form_tester import PostFormTester
 from test_content import MainPostContentTester, main_content_tester
 from test_edit import _test_edit
 
-import pdb
 
 @pytest.mark.parametrize(
     ("field", "type", "params", "field_error", "type_error",
@@ -265,7 +264,6 @@ def _test_create_items(
         unlogged_client,
         user_client,
 ) -> Tuple[HttpResponse, List[ModelAdapterT]]:
-    
     creation_tester = CreatePostFormTester(
         create_a_post_get_response,
         PostModel,
@@ -297,7 +295,6 @@ def _test_create_items(
         forms_unadapted_data=forms_data,
     )
     try:
-        
         creation_tester.test_unlogged_cannot_create(
             form=forms_to_create[0], qs=PostModel.objects.all()
         )
@@ -308,7 +305,6 @@ def _test_create_items(
             f" поля: {list(forms_to_create[0].data.keys())}. При валидации"
             f" формы возникли следующие ошибки: {e}"
         )
-    # pdb.set_trace()
     response_on_created, created_items = creation_tester.test_create_several(
         forms=forms_to_create[1:], qs=PostModel.objects.all()
     )
