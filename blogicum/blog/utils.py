@@ -2,7 +2,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from .models import Post, Comment
+from .models import Comment, Post
 
 
 def get_post_list(filtrate=False):
