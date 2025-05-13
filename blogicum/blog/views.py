@@ -3,6 +3,7 @@ from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm, ProfileChangeForm
@@ -110,7 +111,10 @@ def create_post(request):
     """Создание поста."""
     template = 'blog/create.html'
 
-    form = PostForm(request.POST or None)
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None
+    )
     context = {'form': form}
 
     if form.is_valid():
@@ -126,7 +130,7 @@ def create_post(request):
 def edit_post(request, post_id):
     """Редактирование поста."""
     template = 'blog/create.html'
-    post = get_item(Post, post_id)
+    post = get_object_or_404(Post, post_id)
     if request.user != post.author:
         return redirect('blog:post_detail', post_id=post_id)
 
@@ -149,6 +153,8 @@ def delete_post(request, post_id):
     template = 'blog/create.html'
 
     post = get_item(Post, post_id, request.user)
+    if post.author != request.user:
+        raise Http404
     form = PostForm(instance=post)
     context = {'form': form}
 
@@ -208,10 +214,8 @@ def delete_comment(request, post_id, comment_id):
     template = 'blog/comment.html'
 
     comment = get_item(Comment, comment_id, request.user)
-    form = CommentForm(instance=comment)
     context = {
         'comment': comment,
-        'form': form
     }
 
     if request.method == 'POST':

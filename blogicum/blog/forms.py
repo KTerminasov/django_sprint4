@@ -29,5 +29,6 @@ class ProfileChangeForm(forms.ModelForm):
     """Форма для изменения профиля пользователя."""
 
     class Meta:
+        action = 'profile/edit'
         model = User
         fields = ('username', 'first_name', 'last_name', 'email')
